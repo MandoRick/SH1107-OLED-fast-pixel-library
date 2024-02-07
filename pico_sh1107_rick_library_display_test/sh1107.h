@@ -35,36 +35,92 @@ public:
 
   // Draw a pixel at the specified coordinates with the specified color
   void drawPixel(int x, int y, uint8_t color) {
-    if (x >= 0 && x < 128 && y >= 0 && y < 128) {
+    if (x >= 0 && x <= 128 && y >= 0 && y <= 128) {
       // Calculate the page and bit mask for the pixel
       uint8_t page = y / 8;
       uint8_t bitMask = 1 << (y % 8);
 
       // Update the display buffer based on the color
       if (color == BLACK) {
-        displayBuffer[x + page * 128] &= ~bitMask; // Clear the bit for BLACK
+        displayBuffer[x + page * 128] &= ~bitMask;  // Clear the bit for BLACK
       } else {
-        displayBuffer[x + page * 128] |= bitMask; // Set the bit for WHITE
+        displayBuffer[x + page * 128] |= bitMask;  // Set the bit for WHITE
       }
     }
   }
+
+  // Draw a circle at the specified center coordinates with the specified radius and color
+  void drawCircle(int x0, int y0, int radius, uint8_t color) {
+    int x = radius - 1;
+    int y = 0;
+    int dx = 1;
+    int dy = 1;
+    int err = dx - (radius << 1);
+
+    while (x >= y) {
+      drawPixel(x0 + x, y0 + y, color);
+      drawPixel(x0 + y, y0 + x, color);
+      drawPixel(x0 - y, y0 + x, color);
+      drawPixel(x0 - x, y0 + y, color);
+      drawPixel(x0 - x, y0 - y, color);
+      drawPixel(x0 - y, y0 - x, color);
+      drawPixel(x0 + y, y0 - x, color);
+      drawPixel(x0 + x, y0 - y, color);
+
+      if (err <= 0) {
+        y++;
+        err += dy;
+        dy += 2;
+      }
+      if (err > 0) {
+        x--;
+        dx += 2;
+        err += dx - (radius << 1);
+      }
+    }
+  }
+
+  // Draw a line between two points with the specified color
+  void drawLine(int x0, int y0, int x1, int y1, uint8_t color) {
+    int dx = abs(x1 - x0);
+    int sx = x0 < x1 ? 1 : -1;
+    int dy = -abs(y1 - y0);
+    int sy = y0 < y1 ? 1 : -1;
+    int err = dx + dy;
+    int e2;
+
+    while (true) {
+      drawPixel(x0, y0, color);
+      if (x0 == x1 && y0 == y1) break;
+      e2 = 2 * err;
+      if (e2 >= dy) {
+        err += dy;
+        x0 += sx;
+      }
+      if (e2 <= dx) {
+        err += dx;
+        y0 += sy;
+      }
+    }
+  }
+
 
   // Update the display with the current display buffer
   void display() {
     // Set the page address and data mode for transmission
     for (int page = 0; page < 16; ++page) {
-      setCursor(0, page); // Set the cursor to the beginning of the page
-      beginData(); // Begin data transmission
+      setCursor(0, page);  // Set the cursor to the beginning of the page
+      beginData();         // Begin data transmission
       // Send the display buffer data for the current page
       for (int x = 0; x < 128; ++x) {
         sendData(displayBuffer[x + page * 128]);
       }
-      endTransm(); // End data transmission for the current page
+      endTransm();  // End data transmission for the current page
     }
   }
 
 private:
-  uint8_t displayBuffer[128 * 8]; // Display buffer to hold pixel values
+  uint8_t displayBuffer[BUFSIZE_128x128];  // Display buffer to hold pixel values
 
   // Set the cursor to the specified position
   void setCursor(uint8_t x, uint8_t y) {
